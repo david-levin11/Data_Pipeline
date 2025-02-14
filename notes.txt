@@ -1,0 +1,9 @@
+Yellow Trip Data Dictionary: https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf
+
+checking the database using pgcli: pgcli -h localhost -p 5432 -u root -d ny_taxi2
+
+#Questions:
+
+1. Would it be better to run upload_data.py without args if we know the files we want?  Config file?
+
+2. Work on a Docker compose file for run_postgres.sh?
