@@ -2,8 +2,102 @@ Yellow Trip Data Dictionary: https://www.nyc.gov/assets/tlc/downloads/pdf/data_d
 
 checking the database using pgcli: pgcli -h localhost -p 5432 -u root -d ny_taxi2
 
-#Questions:
+Note for running Docker:
 
-1. Would it be better to run upload_data.py without args if we know the files we want?  Config file?
+1. You can run a docker image by finding one and running it using "docker run -it python:3.9" --example using -it for interactive mode and python:3.9 being the image itself
+    --To see what containers are running you can use "docker ps" in bash.  To kill a process use: docker kill (job id)
+2. If you make any changes to this image (i.e. by installing different packages etc) these won't save the next time you run it
+3. You will need to use a Dockerfile (see example) to specifiy how you want your container to look.  Then use a build command such as "docker build -t test:pandas ." where test:pandas is 
+your image name and the " ." is the directory where you want to build (and where your docker file is located...in this case " ." is the present working directory)
 
-2. Work on a Docker compose file for run_postgres.sh?
+Notes for running Postgres:
+
+1. Need to specifiy environment variables such as POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB
+    -e POSTGRES_USER:"root"
+    -e POSTGRES_PASSWORD:"root"
+    -e POSTGRES_DB:"ny_taxi2"
+
+2. Need to specifiy a folder on your host machine and map it to a folder on your container where your data is stored. 
+    -v data/data/ny_taxi_postgres_data:/var/lib/postgresql/data
+3. Make sure you change permissions on the folder you create locally so that it's not owned by root and it has read/write permissions
+
+4. Make sure to specifiy the port on your host machine and map it to the port on your container
+    -p 5432:5432
+5. Finally the docker run command with your image
+    postgres:13
+
+
+Notes for pgadmin:
+
+1. Open another terminal and run the docker image for pgadmin4 (can do a google search for it)
+2. Cheat code is below:
+    docker run -it -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" -e PGADMIN_DEFAULT_PASSWORD="root" -p 8080:80 dpage/pgadmin4
+3. This runs the docker image with pgadmin4.  Mapping port 8080 on your codespace to 80 on the container
+4. The tricky part is that to get pgadmin in its container to connect to postgres in another container you need to network them
+
+Notes for Docker networks
+
+1. First create the network using "docker network create pg-network" where pg-network is your network name
+2. Then you need to use the --network flag to create a connection from each container to the network.
+3. Now you need to run your containers using this flag...for postgres its:
+docker run -it \
+    -e POSTGRES_USER="root"\
+    -e POSTGRES_PASSWORD="root" \
+    -e POSTGRES_DB="ny_taxi2" \
+    -v /data/data/ny_taxi_postgres_data:/var/lib/postgresql/data \
+    -p 5432:5432 \
+    --network=pg-network \
+    --name pg-database \
+    postgres:13
+
+4. For pgadmin its:
+
+docker run -it \
+    -e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+    -e PGADMIN_DEFAULT_PASSWORD="root" \
+    -p 8080:80 \
+    --network=pg-network \
+    --name pgadmin \
+    dpage/pgadmin4
+
+5. Then go into pgadmin and create a server with host name "pg-database" on port 5432
+
+
+NOW to dockerize the data ingest script:
+
+1. Make sure all python dependencies from upload_data.py are installed using your Dockerfile
+2. Change entry point to "upload_data.py"
+3. Build your container:
+
+docker build -t taxi_ingest:v001 .
+
+4. Now we run our container with the input parameters for our python script (but specify that you want to run it in the network you set up)
+
+URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+
+docker run -it \
+    --network=pg-network \
+    taxi_ingest:v001 \
+    --user=root \
+    --password=root \
+    --host=pg-database \
+    --port=5432 \
+    --db=ny_taxi2 \
+    --tb=yellow_taxi_data \
+    --url=${URL}
+
+Notes on docker images:  
+ - If you get errors like "Error response from daemon: Conflict. 
+The name "qgis-desktop-2-4" is already in use by container 235566ae17b8. 
+You have to delete (or rename) that container to be able to reuse that name." then use "docker ps -a" to view the containers and then select the 
+appropriate id and run docker rm "id"
+
+Notes on Docker compose:
+
+1. For running multiple docker containers in a network in one yml file.
+2. When you create a service in docker-compose.yaml, everything under that service is a part of the same \
+    network so you don't have to worry about creating a network...just reference the servce in pgadmin.
+3. To run just use docker-compose up and it runs everything for you
+4. To run in detached mode (i.e to give you your terminal back) run "docker-compose up -d"
+5. To shut it down, run "docker-compose down"
+
