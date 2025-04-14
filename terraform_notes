@@ -1,0 +1,12 @@
+Terraform-- A code tool to define both cloud and on-prem resources in human-readable format
+        - Helps you keep track of infrustructure
+        - Easier to collaborate
+        - Can pass a terraform file and recreate projects etc
+        - Makes sure you remove resources when you're done to avoid being charged for things
+
+    What is it not?
+        - Doesn't manage code or update it
+        - Doesn't change resources (i.e. different virtual machine or change S3 buckets)
+        - Doesn't manage resources not defined in your terraform file
+    What is it?
+        - Infrastructure as code
